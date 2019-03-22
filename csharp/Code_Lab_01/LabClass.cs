@@ -11,7 +11,9 @@ namespace Code_Lab_01 {
 		/// </summary>
 		[CommandMethod("HelloWorld")]
 		public void HelloWorld() {
+			//获取当前文档对应的控制台。
 			Editor editor = Application.DocumentManager.MdiActiveDocument.Editor;
+			//在控制台上输出 "Hello World!" 字符串
 			editor.WriteMessage("Hello World!");
 		}
 
