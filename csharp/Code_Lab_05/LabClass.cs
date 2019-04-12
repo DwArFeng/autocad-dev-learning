@@ -35,7 +35,7 @@ namespace Code_Lab_05 {
 				}
 
 				//输出实体的详细信息。
-				ShowDBObjectMessage(entity, editor);
+				PrintEntityInfo(entity, editor);
 
 			} catch (Autodesk.AutoCAD.Runtime.Exception e) {
 				editor.WriteMessage(e.Message);
@@ -97,7 +97,7 @@ namespace Code_Lab_05 {
 				}
 
 				//输出实体的详细信息。
-				ShowDBObjectMessage(entity, editor);
+				PrintEntityInfo(entity, editor);
 			} catch (Autodesk.AutoCAD.Runtime.Exception e) {
 				editor.WriteMessage(e.Message);
 				//如果操作过程中产生了任何异常，则中止事务。
@@ -108,7 +108,12 @@ namespace Code_Lab_05 {
 			}
 		}
 
-		private void ShowDBObjectMessage(Entity entity, Editor editor) {
+		/// <summary>
+		/// 在指定的控制台上打印指定的实体的详细信息。
+		/// </summary>
+		/// <param name="entity">指定的实体。</param>
+		/// <param name="editor">指定的控制台。</param>
+		private void PrintEntityInfo(Entity entity, Editor editor) {
 			#region 入口参数非空判断。
 			if (entity == null) {
 				throw new ArgumentNullException("入口参数 dbObject 不能为 null。");
@@ -126,18 +131,17 @@ namespace Code_Lab_05 {
 			editor.WriteMessage("---------------Misc属性---------------\r\n");
 			editor.WriteMessage(String.Format("对象的 id 是: {0}\r\n", entity.Id));
 			editor.WriteMessage(String.Format("对象的 handler 是: {0}\r\n", entity.Handle));
-			editor.WriteMessage("\r\n");
+			editor.WriteMessage(String.Format("对象的扩展词典的ID是: {0}\r\n", entity.ExtensionDictionary.ToString()));
 
 			//输出对象的部分常规信息
 			editor.WriteMessage("---------------General属性---------------\r\n");
 			editor.WriteMessage(String.Format("对象所在的图层的名称是: {0}\r\n", entity.Layer));
 			editor.WriteMessage(String.Format("对象的线型名称是: {0}\r\n", entity.Linetype));
 			#region 输出对象的颜色信息。
-			Color color = entity.Color;
+			Autodesk.AutoCAD.Colors.Color color = entity.Color;
 			switch (color.ColorMethod) {
 				case ColorMethod.ByAci:
-					editor.WriteMessage("对象的颜色类型是索引色\r\n");
-					editor.WriteMessage(color.ColorName);
+					editor.WriteMessage(String.Format("对象的颜色类型是索引色，其索引值为: {0}\r\n"), color.ColorIndex);
 					break;
 				case ColorMethod.ByBlock:
 					editor.WriteMessage(String.Format("对象的颜色类型是ByBloc\r\n"));
@@ -146,7 +150,7 @@ namespace Code_Lab_05 {
 					if (color.HasBookName) {
 						editor.WriteMessage(String.Format("对象的颜色类型是真彩色，其bookname是: {0}\r\n", color.BookName));
 					} else {
-						editor.WriteMessage("对象的颜色是真彩色\r\n");
+						editor.WriteMessage(String.Format("对象的颜色是真彩色，其颜色值为: {0}\r\n", color.ColorValue));
 					}
 					break;
 				case ColorMethod.ByLayer:
@@ -160,7 +164,93 @@ namespace Code_Lab_05 {
 			}
 			#endregion
 
+			//判断该实体的类型，并且针对该类型进行更加详细的输出。
+			if (entity is Circle) {
+				PrintTypeBanner(editor, "该对象是圆，将输出其具体信息");
+				PrintCircleInfo((Circle)entity, editor);
+			} else if (entity is Table) {
+				PrintTypeBanner(editor, "该对象是表格，将输出其具体信息");
+				PrintTableInfo((Table)entity, editor);
+			} else {
+				PrintTypeBanner(editor, "暂时无法识别对象");
+			}
+		}
 
+		private void PrintCircleInfo(Circle circle, Editor editor) {
+			#region 入口参数非空判断。
+			if (circle == null) {
+				throw new ArgumentNullException("入口参数 circle 不能为 null。");
+			}
+			if (editor == null) {
+				throw new ArgumentException("入口参数 editor 不能为 null。");
+			}
+			#endregion
+
+			//输出对象的部分 Geometry 信息
+			editor.WriteMessage("---------------Geometry属性---------------\r\n");
+			editor.WriteMessage(String.Format("对象的圆心是: {0}\r\n", circle.Center));
+			editor.WriteMessage(String.Format("对象的周长是: {0}\r\n", circle.Circumference));
+			editor.WriteMessage(String.Format("对象的直径是: {0}\r\n", circle.Diameter));
+			editor.WriteMessage(String.Format("对象的法向量是: {0}\r\n", circle.Normal));
+		}
+
+		private void PrintTableInfo(Table table, Editor editor) {
+			#region 入口参数非空判断。
+			if (table == null) {
+				throw new ArgumentNullException("入口参数 table 不能为 null。");
+			}
+			if (editor == null) {
+				throw new ArgumentException("入口参数 editor 不能为 null。");
+			}
+			#endregion
+
+			//输出对象的部分 Table 信息
+			editor.WriteMessage("---------------Table属性---------------\r\n");
+			editor.WriteMessage(String.Format("对象的高度是: {0}\r\n", table.Height));
+			editor.WriteMessage(String.Format("对象的宽度是: {0}\r\n", table.Width));
+
+			//输出对象的部分内容信息
+			#region 遍历并输出表格内容。
+			editor.WriteMessage("---------------表格内容---------------\r\n");
+			foreach (CellReference cellRef in table.Cells) {
+				Cell cell = table.Cells[cellRef.Row, cellRef.Column];
+				editor.WriteMessage(String.Format(
+					"表格数据:\t行:{0:G}\t列:{1:G}\t内容:{2}\t\r\n",
+					cellRef.Row,
+					cellRef.Column,
+					cell.TextString
+				));
+			}
+			#endregion
+
+			//输出对象的部分格式信息
+			#region 遍历并输出表格格式。
+			editor.WriteMessage("---------------表格格式---------------\r\n");
+			foreach (CellReference cellRef in table.Cells) {
+				Cell cell = table.Cells[cellRef.Row, cellRef.Column];
+				editor.WriteMessage(String.Format(
+					"表格数据:\t行:{0:G}\t列:{1:G}\t类型:{2:G}\r\n",
+					cellRef.Row,
+					cellRef.Column,
+					Enum.GetName(typeof(TableCellType), cell.CellType)
+				));
+			}
+			#endregion
+		}
+
+		private void PrintTypeBanner(Editor editor, String banner) {
+			#region 入口参数非空判断。
+			if (editor == null) {
+				throw new ArgumentNullException("入口参数 editor 不能为 null。");
+			}
+			if (banner == null) {
+				throw new ArgumentNullException("入口参数 banner 不能为 null。");
+			}
+			#endregion
+
+			editor.WriteMessage("------------------------------------------------------------\r\n");
+			editor.WriteMessage(String.Format("----------{0}----------\r\n", banner));
+			editor.WriteMessage("------------------------------------------------------------\r\n");
 		}
 	}
 }
